@@ -1,0 +1,46 @@
+[
+  {
+    "id": "1234d0f5ba10fb37fc8ee6ea",
+    "title": "Computadora GAMER FULL HD",
+    "description": "Computadora moderna, capas de procesar juegos a 4k, soporta software de alto rendimiento",
+    "code": "2",
+    "price": 100,
+    "status": true,
+    "stock": 5,
+    "category": "Electro",
+    "thumbnails": "https://cloudinary.com/"
+  },
+  {
+    "id": "4321d0f5ba10fb37fc8ee6ea",
+    "title": "Mouse Gamer",
+    "description": "Mouse moderno, no utiliza cables su conexion es por pendrive",
+    "code": "3",
+    "price": 10,
+    "status": true,
+    "stock": 5,
+    "category": "Electro",
+    "thumbnails": "https://cloudinary.com/"
+  },
+  {
+    "id": "6995d0f5ba10fb37fc8ee6ea",
+    "title": "Escritorio para computadora ACTUALIZADA-2",
+    "description": "Escritorio para computadora moderno",
+    "code": "4",
+    "price": 22,
+    "status": true,
+    "stock": 5,
+    "category": "muebles",
+    "thumbnails": "https://cloudinary.com/"
+  },
+  {
+    "id": "401bb696-c4c8-47c1-a2a7-03775463a91f",
+    "title": "Termo Stanley Actualizado",
+    "description": "Termo de edicion limitada",
+    "code": "5",
+    "price": 100,
+    "status": true,
+    "stock": 3,
+    "category": "hogar",
+    "thumbnails": "https://cloudinary.com/"
+  }
+]

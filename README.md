@@ -1,7 +1,7 @@
 # ⚙️ Configuración de Variables de Entorno (.env)
 
 Este proyecto usa variables de entorno para manejar configuraciones sensibles como el puerto del servidor y la conexión a la base de datos.
-
+Se debe descomentar en el archivo app.js y controllers/productions.js los utilizados por mongo para que funcione con MONGO-DB
 Por seguridad, el archivo `.env` **NO está incluido en el repositorio**.
 
 ---
