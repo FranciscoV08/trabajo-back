@@ -62,7 +62,7 @@ export const addProduct = async (req, res) => {
     
     // console.log(products)
     fs.writeFileSync(ruta, JSON.stringify(products, null, 2))
-
+    res.json(products)
 }
 // Eliminar el producto
 export const deleteProduct = async (req, res) => {
@@ -79,9 +79,9 @@ export const deleteProduct = async (req, res) => {
 
     // console.log(deleteProduct)
     fs.writeFileSync(ruta, JSON.stringify(deleteProduct, null, 2))
-
+    res.json(deleteProduct)
 }
-// Actualizar usuario
+// Actualizar producto
 export const updateProduct = async (req, res) => {
   const id = req.params.id;
   const newProduct = req.body;
@@ -110,7 +110,7 @@ export const updateProduct = async (req, res) => {
     // console.log(products)
     fs.writeFileSync(ruta, JSON.stringify(products, null, 2))
 
-
+    res.json(products)
 }
 
 
@@ -176,7 +176,7 @@ export const updateProduct = async (req, res) => {
 
 //     }
 // }
-// // Actualizar usuario
+// // Actualizar 
 // export const updateProduct = async (req, res) => {
 //     try {
 //         // Obtenemos el params del path
