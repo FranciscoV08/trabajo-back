@@ -62,6 +62,11 @@ export const addProduct = async (req, res) => {
     
     // console.log(products)
     fs.writeFileSync(ruta, JSON.stringify(products, null, 2))
+    
+    // Emitir evento de socket
+    const io = req.app.get('socketio');
+    io.emit('updateProducts', products);
+
     res.json(products)
 }
 // Eliminar el producto
@@ -79,6 +84,11 @@ export const deleteProduct = async (req, res) => {
 
     // console.log(deleteProduct)
     fs.writeFileSync(ruta, JSON.stringify(deleteProduct, null, 2))
+
+    // Emitir evento de socket
+    const io = req.app.get('socketio');
+    io.emit('updateProducts', deleteProduct);
+
     res.json(deleteProduct)
 }
 // Actualizar producto

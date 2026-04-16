@@ -10,4 +10,4 @@ router.post("/products", addProduct)
 router.delete("/products/:id", deleteProduct)
 router.put("/products/:id", updateProduct)
 
-export default router
+export default router
