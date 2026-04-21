@@ -1,77 +1,133 @@
-import { generatorID } from "../utils/index.js"
-import fs from "fs";
+import CartsModel from "../models/carts.model.js";
 
-
-// Crea un carrito json
-export const createCart = (req, res) => {
-
-    const ruta = "./src/db-JSON/carts.json"
-
-    // Generador de CID
-    const cid = generatorID()
-
-
-    const contenido = fs.readFileSync(ruta, "utf-8");
-    const carts = JSON.parse(contenido)
-
-    const newCart = {
-        id: cid,
-        products: []
+export const createCart = async (req, res) => {
+    try {
+        const newCart = await CartsModel.create({ products: [] });
+        res.status(201).json({ status: "success", payload: newCart });
+    } catch (error) {
+        res.status(500).json({ status: "error", message: error.message });
     }
-
-    carts.push(newCart)
-
-
-    fs.writeFileSync(ruta, JSON.stringify(carts, null, 2))
-}
-// obtenemos los productos del carrito
-export const getAllProductsId = (req, res) => {
-    const cid = req.params.cid;
-
-    const ruta = "./src/db-JSON/carts.json"
-
-    const contenido = fs.readFileSync(ruta, "utf-8");
-    const carts = JSON.parse(contenido)
-    const cartDb = carts.find(cart => cart.id === cid);
-
-    // console.log(cartDb.products)
-    res.json(cartDb.products)
 }
 
-export const addProductCart = (req, res) => {
-    const cid = req.params.cid;
-    const pid = req.params.pid;
-    const ruta = "./src/db-JSON/carts.json"
+export const getAllProductsId = async (req, res) => {
+    try {
+        const { cid } = req.params;
+        const cart = await CartsModel.findById(cid).lean();
 
-    // leemos
-    const contenido = fs.readFileSync(ruta, "utf-8");
-    // convertimos
-    const carts = JSON.parse(contenido)
+        if (!cart) {
+            return res.status(404).json({ status: "error", message: "Carrito no encontrado" });
+        }
 
-    // buscamos el carrito 
-    const cart = carts.find(cart => cart.id === cid);
-    if (!cart) {
-        res.json("carrito no encontrado")
+        res.json({ status: "success", payload: cart.products });
+    } catch (error) {
+        res.status(500).json({ status: "error", message: error.message });
     }
-
-    // buscar producto dentro del carrito
-    const existingProduct = cart.products.find(p => p.product === pid);
-
-    // validamos
-    if (existingProduct) {
-        // sumar cantidad
-        existingProduct.quantity += 1;
-    } else {
-        // de lo contrario agregamos
-        cart.products.push({
-            product: pid,
-            quantity: 1
-        });
-    }
-
-    fs.writeFileSync(ruta, JSON.stringify(carts, null, 2))
-
 }
 
-// FUNCIONALIDADES USANDO MONGODB
-// --
+export const addProductCart = async (req, res) => {
+    try {
+        const { cid, pid } = req.params;
+        const cart = await CartsModel.findById(cid);
+
+        if (!cart) {
+            return res.status(404).json({ status: "error", message: "Carrito no encontrado" });
+        }
+
+        const productIndex = cart.products.findIndex(p => p.product.toString() === pid);
+
+        if (productIndex !== -1) {
+            cart.products[productIndex].quantity += 1;
+        } else {
+            cart.products.push({ product: pid, quantity: 1 });
+        }
+
+        await cart.save();
+        res.json({ status: "success", message: "Producto agregado al carrito", payload: cart });
+    } catch (error) {
+        res.status(500).json({ status: "error", message: error.message });
+    }
+}
+
+export const deleteProductFromCart = async (req, res) => {
+    try {
+        const { cid, pid } = req.params;
+        const cart = await CartsModel.findById(cid);
+
+        if (!cart) {
+            return res.status(404).json({ status: "error", message: "Carrito no encontrado" });
+        }
+
+        cart.products = cart.products.filter(p => p.product.toString() !== pid);
+        await cart.save();
+
+        res.json({ status: "success", message: "Producto eliminado del carrito" });
+    } catch (error) {
+        res.status(500).json({ status: "error", message: error.message });
+    }
+}
+
+export const updateCart = async (req, res) => {
+    try {
+        const { cid } = req.params;
+        const { products } = req.body;
+
+        const cart = await CartsModel.findByIdAndUpdate(
+            cid,
+            { products },
+            { new: true }
+        );
+
+        if (!cart) {
+            return res.status(404).json({ status: "error", message: "Carrito no encontrado" });
+        }
+
+        res.json({ status: "success", message: "Carrito actualizado", payload: cart });
+    } catch (error) {
+        res.status(500).json({ status: "error", message: error.message });
+    }
+}
+
+export const updateProductQuantity = async (req, res) => {
+    try {
+        const { cid, pid } = req.params;
+        const { quantity } = req.body;
+
+        const cart = await CartsModel.findById(cid);
+
+        if (!cart) {
+            return res.status(404).json({ status: "error", message: "Carrito no encontrado" });
+        }
+
+        const productIndex = cart.products.findIndex(p => p.product.toString() === pid);
+
+        if (productIndex === -1) {
+            return res.status(404).json({ status: "error", message: "Producto no encontrado en el carrito" });
+        }
+
+        cart.products[productIndex].quantity = quantity;
+        await cart.save();
+
+        res.json({ status: "success", message: "Cantidad actualizada", payload: cart });
+    } catch (error) {
+        res.status(500).json({ status: "error", message: error.message });
+    }
+}
+
+export const clearCart = async (req, res) => {
+    try {
+        const { cid } = req.params;
+        const cart = await CartsModel.findByIdAndUpdate(
+            cid,
+            { products: [] },
+            { new: true }
+        );
+
+        if (!cart) {
+            return res.status(404).json({ status: "error", message: "Carrito no encontrado" });
+        }
+
+        res.json({ status: "success", message: "Carrito vaciado", payload: cart });
+    } catch (error) {
+        res.status(500).json({ status: "error", message: error.message });
+    }
+}

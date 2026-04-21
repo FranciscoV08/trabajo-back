@@ -1,216 +1,114 @@
-import Products from "../models/products.model.js";
-import fs from 'fs'
-import { generatorID } from "../utils/index.js";
+import ProductsModel from "../models/products.model.js";
 
-// --------CONTROLADORES CON DB .JSON
-// Trae todos los productos
 export const getAllProducts = async (req, res) => {
-    // ruta de json
-    const ruta = "./src/db-JSON/products.json"
+    try {
+        const { limit = 10, page = 1, sort, query } = req.query;
+        const filter = {};
+        if (query) {
+            if (query === 'available') {
+                filter.status = true;
+            } else if (query === 'unavailable') {
+                filter.status = false;
+            } else {
+                filter.category = query;
+            }
+        }
+        const options = {
+            limit: parseInt(limit),
+            page: parseInt(page),
+            sort: sort ? { price: sort === 'asc' ? 1 : -1 } : {},
+            lean: true
+        };
 
-    // leemos
-    const contenido = fs.readFileSync(ruta, "utf-8");
-    // convertimos
-    const products = JSON.parse(contenido)
+        const result = await ProductsModel.paginate(filter, options);
+        const status = result ? "success" : "error";
 
+        const baseUrl = `${req.protocol}://${req.get('host')}${req.originalUrl.split('?')[0]}`;
+        const buildPrevLink = result.hasPrevPage ? `${baseUrl}?page=${result.prevPage}&limit=${limit}${sort ? `&sort=${sort}` : ''}${query ? `&query=${query}` : ''}` : null;
+        const buildNextLink = result.hasNextPage ? `${baseUrl}?page=${result.nextPage}&limit=${limit}${sort ? `&sort=${sort}` : ''}${query ? `&query=${query}` : ''}` : null;
 
-    res.json(products)
+        res.json({
+            status,
+            payload: result.docs,
+            totalPages: result.totalPages,
+            prevPage: result.prevPage,
+            nextPage: result.nextPage,
+            page: result.page,
+            hasPrevPage: result.hasPrevPage,
+            hasNextPage: result.hasNextPage,
+            prevLink: buildPrevLink,
+            nextLink: buildNextLink
+        });
+
+    } catch (error) {
+        res.status(500).json({ status: "error", message: error.message });
+    }
 }
-// Trae producto por id
+
 export const getIdProduct = async (req, res) => {
-    const id = req.params.id;
-   // ruta de json
-    const ruta = "./src/db-JSON/products.json"
-    // leemos
-    const contenido = fs.readFileSync(ruta, "utf-8");
-    // convertimos
-    const products = JSON.parse(contenido)
+    try {
+        const id = req.params.id;
+        const product = await ProductsModel.findById(id).lean();
 
-    // buscamos el producto
-    const existProduct = products.find( prod => prod.id === id )
-    if(!existProduct){
-        return res.json("producto no existe")
+        if (!product) {
+            return res.status(404).json({ status: "error", message: "Producto no encontrado" });
+        }
+
+        res.json({ status: "success", payload: product });
+    } catch (error) {
+        res.status(500).json({ status: "error", message: error.message });
     }
-
-    res.json(existProduct)
-
 }
 
-// Agrega un producto
 export const addProduct = async (req, res) => {
-    const {title, description, code, stock, category, thumbnails, price, status} = req.body
-    
-     // ruta de json
-    const ruta = "./src/db-JSON/products.json"
-    // leemos
-    const contenido = fs.readFileSync(ruta, "utf-8");
-    // convertimos / referencia
-    const products = JSON.parse(contenido)
+    try {
+        const producto = req.body;
+        const newProduct = await ProductsModel.create(producto);
 
-    products.push({
-    id: generatorID(),
-    title: title || "sin titulo",
-    description: description || "no description",
-    code: code,
-    price: price,
-    status: status,
-    stock: stock,
-    category: category,
-    thumbnails:thumbnails
-    })
+        const io = req.app.get('socketio');
+        if (io) {
+            const allProducts = await ProductsModel.find().lean();
+            io.emit('updateProducts', allProducts);
+        }
 
-    
-    // console.log(products)
-    fs.writeFileSync(ruta, JSON.stringify(products, null, 2))
-    
-    // Emitir evento de socket
-    const io = req.app.get('socketio');
-    io.emit('updateProducts', products);
-
-    res.json(products)
+        res.status(201).json({ status: "success", payload: newProduct });
+    } catch (error) {
+        res.status(500).json({ status: "error", message: error.message });
+    }
 }
-// Eliminar el producto
+
 export const deleteProduct = async (req, res) => {
-    const id = req.params.id;
-   // ruta de json
-    const ruta = "./src/db-JSON/products.json"
-    // leemos
-    const contenido = fs.readFileSync(ruta, "utf-8");
-    // convertimos
-    const products = JSON.parse(contenido)
+    try {
+        const id = req.params.id;
+        const deletedProduct = await ProductsModel.findByIdAndDelete(id);
 
-    // buscamos el producto
-    const deleteProduct = products.filter( prod => prod.id != id )
+        if (!deletedProduct) {
+            return res.status(404).json({ status: "error", message: "Producto no encontrado" });
+        }
 
-    // console.log(deleteProduct)
-    fs.writeFileSync(ruta, JSON.stringify(deleteProduct, null, 2))
+        const io = req.app.get('socketio');
+        if (io) {
+            const allProducts = await ProductsModel.find().lean();
+            io.emit('updateProducts', allProducts);
+        }
 
-    // Emitir evento de socket
-    const io = req.app.get('socketio');
-    io.emit('updateProducts', deleteProduct);
-
-    res.json(deleteProduct)
+        res.json({ status: "success", message: "Producto eliminado", payload: deletedProduct });
+    } catch (error) {
+        res.status(500).json({ status: "error", message: error.message });
+    }
 }
-// Actualizar producto
+
 export const updateProduct = async (req, res) => {
-  const id = req.params.id;
-  const newProduct = req.body;
-    
-     // ruta de json
-    const ruta = "./src/db-JSON/products.json"
-    // leemos
-    const contenido = fs.readFileSync(ruta, "utf-8");
-    // convertimos / referencia
-    const products = JSON.parse(contenido)
-    // buscar el producto por index
-    const index = products.findIndex(prod => prod.id === id);
-    if(index === -1){
-        return res.json("No se encontro el producto")
-    }
-    // mediante el index obtenemos el producto
-    products[index] = {
-        //copiamos 
-        ...products[index],
-        //esparcimos los datos del body, usamos spread
-        ...newProduct,
-        // Agregamos el id por si el usuario manda un id diferente.
-        id
-    }
- 
-    // console.log(products)
-    fs.writeFileSync(ruta, JSON.stringify(products, null, 2))
+    try {
+        const { id } = req.params;
+        const productForm = req.body;
 
-    res.json(products)
+        const updatedProduct = await ProductsModel.findByIdAndUpdate(id, productForm, { new: true, lean: true });
+        if (!updatedProduct) {
+            return res.status(404).json({ status: "error", message: "Producto no encontrado" });
+        }
+        res.json({ status: "success", message: "Producto actualizado", payload: updatedProduct });
+    } catch (error) {
+        res.status(500).json({ status: "error", message: error.message });
+    }
 }
-
-
-
-// ----------CONTROLADORES CON DB MONGO-------------------
-
-// // Trae todos los productos
-// export const getAllProducts = async (req, res) => {
-//     try {
-//         const productos = await Products.find()
-//         console.log(productos)
-//         res.json(productos)
-//     } catch (error) {
-//         console.log(error)
-//     }
-// }
-// // Agrega un producto
-// export const addProduct = async (req, res) => {
-
-//     try {
-//         const producto = req.body;
-//         const newProduct = await Products.create(producto);
-
-//         console.log(newProduct)
-//     } catch (error) {
-//         console.log(error)
-
-//     }
-
-
-// }
-// // Trae producto por id
-// export const getIdProduct = async (req, res) => {
-//     try {
-//         // Obtenemos el params del path
-//         const params = req.params.id;
-
-//         // buscamos por id
-//         const productId = await Products.findOne({ _id: params })
-//         // console.log(productId)
-
-//         res.json(productId)
-//     } catch (error) {
-//         console.log(error)
-
-//     }
-// }
-// // Eliminar el producto
-// export const deleteProduct = async (req, res) => {
-//     try {
-//         // Obtenemos el params del path
-//         const params = req.params.id;
-
-//         // buscamos por id
-//         const productId = await Products.deleteOne({ _id: params })
-//         // console.log(productId)
-//         res.json({
-//             message: "Producto eliminado",
-//             product: productId
-//         })
-//     } catch (error) {
-//         console.log(error)
-
-//     }
-// }
-// // Actualizar 
-// export const updateProduct = async (req, res) => {
-//     try {
-//         // Obtenemos el params del path
-//         const {id} = req.params;
-//         const productForm = req.body;
-//         console.log(id)
-
-//         // buscamos por id
-//         const userDb = await Products.findOne({_id: id})
-//         // validamos
-//         if(!userDb){
-//             console.log(userDb)
-//             return res.json({message:"el producto no existe"})
-//         }
-//         // actualizamos
-//         const newProduct = await Products.findByIdAndUpdate(id, productForm,{new:true})
-//         console.log(newProduct)
-        
-//         res.json({
-//             message: "Producto actualizado",
-//             product: newProduct
-//         })
-//     } catch (error) {
-//         console.log(error)
-
-//     }
-// }
